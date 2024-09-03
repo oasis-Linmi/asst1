@@ -249,7 +249,59 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
   // Your solution should work for any value of
   // N and VECTOR_WIDTH, not just when VECTOR_WIDTH divides N
   //
-  
+  // All ones
+  __cs149_vec_float x;
+  __cs149_vec_int y;
+  __cs149_vec_float result;
+  __cs149_mask maskAll, maskIsNeedMul,maskOutputOne,maskOutput,maskNeedClamp;
+  __cs149_vec_float zero_float = _cs149_vset_float(0.f);
+  __cs149_vec_float nine_float = _cs149_vset_float(9.999999);
+  __cs149_vec_int zero_int = _cs149_vset_int(0);
+  __cs149_vec_int one_int = _cs149_vset_int(1);
+  __cs149_vec_float ans;
+  maskAll = _cs149_init_ones();
+
+  // All zeros
+  maskIsNeedMul = _cs149_init_ones(0);
+
+  for(int i = 0; i < N; i+= VECTOR_WIDTH){
+    int left_cal = N - i;
+    if(left_cal < VECTOR_WIDTH){
+      // printf("last:%d\n",left_cal);
+      maskAll =  _cs149_init_ones(left_cal);
+    }
+    _cs149_vload_float(x, values+i, maskAll);              
+    _cs149_vload_int(y, exponents+i, maskAll);
+    _cs149_vmove_float(ans, x, maskAll);
+    _cs149_veq_int(maskOutputOne, zero_int, y, maskAll);
+
+    _cs149_vset_float(result, 1.f, maskOutputOne);
+    maskOutput = _cs149_mask_not(maskOutputOne);
+    int need_mul_num = 0;
+    _cs149_vgt_int(maskIsNeedMul, y, one_int, maskAll);
+    need_mul_num = _cs149_cntbits(maskIsNeedMul);
+    while(need_mul_num > 0){
+      printf("%d\n",need_mul_num);
+      _cs149_vmult_float(ans, ans, x, maskIsNeedMul);
+      _cs149_vsub_int(y, y, one_int, maskAll);
+      _cs149_vgt_int(maskIsNeedMul, y, one_int, maskAll);
+      need_mul_num = _cs149_cntbits(maskIsNeedMul);
+    }
+    _cs149_vgt_float(maskNeedClamp, ans, nine_float, maskAll);
+    _cs149_vset_float(ans, 9.999999, maskNeedClamp);
+    _cs149_vadd_float(result, ans, zero_float, maskOutput);
+    _cs149_vstore_float(output+i, result, maskAll);
+
+
+    
+
+    
+
+  }
+
+
+  // Load vector of values from contiguous memory addresses
+ 
 }
 
 // returns the sum of all elements in values
@@ -270,11 +322,22 @@ float arraySumVector(float* values, int N) {
   //
   // CS149 STUDENTS TODO: Implement your vectorized version of arraySumSerial here
   //
-  
+  float totalSum = 0.0;
+  __cs149_vec_float x, tmp;
+  __cs149_mask maskAll;
+  maskAll = _cs149_init_ones();
   for (int i=0; i<N; i+=VECTOR_WIDTH) {
-
+    int num = std::log2(VECTOR_WIDTH);
+    _cs149_vload_float(x, values+i, maskAll);
+    while(num > 1){
+      _cs149_hadd_float(tmp, x);
+      _cs149_interleave_float(x,tmp);
+      num--;
+    }
+    _cs149_hadd_float(x, x);
+    totalSum += x.value[0];
   }
 
-  return 0.0;
+  return totalSum;
 }
 
